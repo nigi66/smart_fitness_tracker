@@ -8,6 +8,15 @@
 #include <QTextStream>
 #include <QPushButton>
 
+#include <QtCharts/QChartView>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QBarSet>
+#include <QtCharts/QBarSeries>
+#include <QtCharts/QBarCategoryAxis>
+#include <QtCharts/QValueAxis>
+using namespace QtCharts;
+
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -78,14 +87,17 @@ void MainWindow::on_btnShowSummary_clicked() {
     QString columnName = ui->activityTable->horizontalHeaderItem(col)->text();
 
     QVector<double> values;
+    QStringList categories;
     for (int row = 0; row < rows; ++row) {
         QTableWidgetItem *item = ui->activityTable->item(row, col);
         if (!item) continue;
 
         bool ok;
         double value = item->text().toDouble(&ok);
-        if (ok)
+        if (ok) {
             values.append(value);
+            categories << QString::number(row + 1); // use row number as label
+        }
     }
 
     if (values.isEmpty()) {
@@ -93,15 +105,13 @@ void MainWindow::on_btnShowSummary_clicked() {
         return;
     }
 
-    double sum = 0.0;
-    double minVal = values[0];
-    double maxVal = values[0];
+    // Summary calculation
+    double sum = 0.0, minVal = values[0], maxVal = values[0];
     for (double val : values) {
         sum += val;
         if (val < minVal) minVal = val;
         if (val > maxVal) maxVal = val;
     }
-
     double mean = sum / values.size();
 
     QString summary;
@@ -110,8 +120,35 @@ void MainWindow::on_btnShowSummary_clicked() {
     summary += QString("Mean: %1\n").arg(mean, 0, 'f', 2);
     summary += QString("Min: %1\n").arg(minVal, 0, 'f', 2);
     summary += QString("Max: %1\n").arg(maxVal, 0, 'f', 2);
-
     QMessageBox::information(this, "Column Summary", summary);
+
+    // 📊 Create the chart
+    QBarSet *set = new QBarSet(columnName);
+    for (double val : values)
+        *set << val;
+
+    QBarSeries *series = new QBarSeries();
+    series->append(set);
+
+    QChart *chart = new QChart();
+    chart->addSeries(series);
+    chart->setTitle("Data for column: " + columnName);
+    chart->setAnimationOptions(QChart::SeriesAnimations);
+
+    QBarCategoryAxis *axisX = new QBarCategoryAxis();
+    axisX->append(categories);
+    chart->addAxis(axisX, Qt::AlignBottom);
+    series->attachAxis(axisX);
+
+    QValueAxis *axisY = new QValueAxis();
+    chart->addAxis(axisY, Qt::AlignLeft);
+    series->attachAxis(axisY);
+
+    QChartView *chartView = new QChartView(chart);
+    chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->resize(800, 500);
+    chartView->setWindowTitle("Column Chart");
+    chartView->show();
 }
 
 
