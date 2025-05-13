@@ -66,9 +66,54 @@ void MainWindow::on_btnLoadCSV_clicked(){
 }
 
 
-void MainWindow::on_btnShowSummary_clicked(){
+void MainWindow::on_btnShowSummary_clicked() {
+    int col = ui->activityTable->currentColumn();
+    int rows = ui->activityTable->rowCount();
 
+    if (col == -1 || rows == 0) {
+        QMessageBox::information(this, "Summary", "Please select a column with numeric values.");
+        return;
+    }
+
+    QString columnName = ui->activityTable->horizontalHeaderItem(col)->text();
+
+    QVector<double> values;
+    for (int row = 0; row < rows; ++row) {
+        QTableWidgetItem *item = ui->activityTable->item(row, col);
+        if (!item) continue;
+
+        bool ok;
+        double value = item->text().toDouble(&ok);
+        if (ok)
+            values.append(value);
+    }
+
+    if (values.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Selected column does not contain any numeric data.");
+        return;
+    }
+
+    double sum = 0.0;
+    double minVal = values[0];
+    double maxVal = values[0];
+    for (double val : values) {
+        sum += val;
+        if (val < minVal) minVal = val;
+        if (val > maxVal) maxVal = val;
+    }
+
+    double mean = sum / values.size();
+
+    QString summary;
+    summary += QString("Column: %1\n").arg(columnName);
+    summary += QString("Valid Numeric Entries: %1\n").arg(values.size());
+    summary += QString("Mean: %1\n").arg(mean, 0, 'f', 2);
+    summary += QString("Min: %1\n").arg(minVal, 0, 'f', 2);
+    summary += QString("Max: %1\n").arg(maxVal, 0, 'f', 2);
+
+    QMessageBox::information(this, "Column Summary", summary);
 }
+
 
 
 
